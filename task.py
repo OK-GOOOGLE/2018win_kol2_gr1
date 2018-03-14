@@ -18,3 +18,40 @@
 #Your program must be runnable with command "python task.py".
 #Show some usecases of your library in the code (print some things)
 #Good Luck
+
+
+class Bank:
+    def __init__(self, *args):
+        self.bank_Name = args[0]
+        self.clients = {}
+
+    def add_client(self, client_name, amount):
+    	if client_name in self.clients.keys:
+    		print("There is already a client with sach name.")
+    		return
+        self.clients.setdefault(client_name, amount)
+
+    def transfer(self, sender, recipient, recipient_bank, amount):
+        self.clients[sender] -= amount
+        recipient_bank.clients[sender] += amount
+
+    def remove_client(self, client_name):
+    	if client_name in self.clients.keys:
+	    	del self.clients[client_name]
+
+	def __str__(self):
+		result = "Bank Name: {}. \n Clients: \n".format(self.bank_Name)
+		return result
+
+		
+
+
+bank1 = Bank("bank1")
+bank2 = Bank("bank2")
+
+bank1.add_client("client1", 200)
+
+
+print(bank1)
+
+
