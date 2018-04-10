@@ -1,57 +1,116 @@
-#Banking simulator. Write a code in python that simulates the banking system. 
-#The program should:
-# - be able to create new banks
-# - store client information in banks
-# - allow for cash input and withdrawal
-# - allow for money transfer from client to client
-#If you can thing of any other features, you can add them.
-#This code shoud be runnable with 'python kol1.py'.
-#You don't need to use user input, just show me in the script that the structure of your code works.
-#If you have spare time you can implement: Command Line Interface, some kind of data storage, or even multiprocessing.
-#Do your best, show off with good, clean, well structured code - this is more important than number of features.
-#After you finish, be sure to UPLOAD this (add, commit, push) to the remote repository.
-#Make intelligent use of pythons syntactic sugar (overloading, iterators, generators, etc)
-#Most of all: CREATE GOOD, RELIABLE, READABLE CODE.
-#The goal of this task is for you to SHOW YOUR BEST python programming skills.
-#Impress everyone with your skills, show off with your code.
-#
-#Your program must be runnable with command "python task.py".
-#Show some usecases of your library in the code (print some things)
-#Good Luck
+
+# NOTE !! you need to clear data.dat file after each program run.
+# Otherwise, it will try to add already existing client and will throw an exception.
+# but program can correctly read json files with respective structure. Start_session() is responsible for that.
+
+import json
+from collections import defaultdict
+from os import stat
+banks = defaultdict(dict)
 
 
-class Bank:
-    def __init__(self, *args):
-        self.bank_Name = args[0]
-        self.clients = {}
-
-    def add_client(self, client_name, amount):
-    	if client_name in self.clients.keys:
-    		print("There is already a client with sach name.")
-    		return
-        self.clients.setdefault(client_name, amount)
-
-    def transfer(self, sender, recipient, recipient_bank, amount):
-        self.clients[sender] -= amount
-        recipient_bank.clients[sender] += amount
-
-    def remove_client(self, client_name):
-    	if client_name in self.clients.keys:
-	    	del self.clients[client_name]
-
-	def __str__(self):
-		result = "Bank Name: {}. \n Clients: \n".format(self.bank_Name)
-		return result
-
-		
+# read data from file and keep it in dictionary Banks
+def session_start():
+    global banks
+    with open("data.dat", "r") as file:
+        if stat("data.dat").st_size < 2:
+            banks = {}
+            return
+        banks = json.load(file)
+        file.close()
 
 
-bank1 = Bank("bank1")
-bank2 = Bank("bank2")
-
-bank1.add_client("client1", 200)
-
-
-print(bank1)
+def session_finish():
+    global banks
+    with open("data.dat", "w") as file:
+        json.dump(banks, file, indent=3)
+        file.close()
 
 
+# (string, ((), (), (), ..) ) -- tuple of tuples: ("client", sum)
+def add_bank(name, *clients_and_sums):
+    global banks
+    if name in banks.keys():
+        raise Exception(f'''a bank with "{name}" name already exists''')
+    # for i,k in clients_and_sums:
+    #     print(i, k)
+
+    banks[name] = {i: k for i, k in clients_and_sums}
+
+
+# (string, string, int)
+def add_client(bank, client, amount):
+    global banks
+    if client in banks[bank].keys():
+        raise Exception(f'''a "{client}" is already a client of the "{client}" bank''')
+    banks[bank][client] = amount
+
+
+#           (string, string,      string,    string,         int   )
+def transfer(payer, payer_bank, payee, payee_bank, amount):
+    global banks
+
+    if payer_bank not in banks.keys() or payer not in banks[payer_bank].keys():
+        print("There is no such bank or payer in the database. Interrupting transaction.")
+        return
+    if payee_bank not in banks.keys() or payee not in banks[payee_bank].keys():
+        print("There is no such bank or payee in the database. Interrupting transaction.")
+        return
+    if banks[payer_bank][payer] < amount:
+        print("no funds available. Interrupting transaction.")
+        return
+
+    provision = 1
+    if payer_bank != payee_bank:
+        provision = 0.95
+    banks[payer_bank][payer] -= amount
+    banks[payee_bank][payee] += amount * provision
+
+
+# (string, string)
+def remove_client(bank, client):
+    global banks
+    if client not in banks[bank].keys():
+        print("can not find such a client")
+        return
+
+    del banks[bank][client]
+
+
+# (string, string, int)
+def income_payment(bank, client, sum):
+    if bank not in banks.keys() or client not in banks[bank].keys():
+        print("There is no such bank or client in the database. Interrupting transaction.")
+        return
+    banks[bank][client] += sum
+
+
+# (string, string, int)
+def cashing(bank, client, sum):
+    if bank not in banks.keys() or client not in banks[bank].keys():
+        print("There is no such bank or client in the database. Interrupting transaction.")
+        return
+    if banks[bank][client] < sum:
+        print("No funds available. Interrupting transaction.")
+        return
+
+    banks[bank][client] -= sum
+
+
+print(banks)
+session_start()
+# banks = {} #############
+
+add_bank("bank1", ("client1", 100), ("client2", 100))
+add_bank("bank2", ("client1", 200), ("client2", 200))
+add_bank("bank3", ("client1", 300), ("client2", 300))
+
+add_client("bank1", "client3", 100)
+
+transfer("client1", "bank2", "client2", "bank1", 100)
+remove_client("bank3", "client2")
+income_payment("bank3", "client1", 50)
+cashing("bank3", "client1", 30)
+print(banks)
+
+session_finish()
